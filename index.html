@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tasks — Telegram Mini App</title>
+
+  <!-- Telegram Web App JS -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Monetag SDK for placement 9873868 -->
+  <script src='//libtl.com/sdk.js' data-zone='9873868' data-sdk='show_9873868'></script>
+
+  <style>
+    :root{--accent:#ffb000;--bg:#0f0f10;--card:#131313;--muted:#9b9b9b;--white:#ffffff}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:linear-gradient(0deg, #fff 0%, #fff 0%);display:flex;align-items:center;justify-content:center;padding:18px}
+    .frame{width:380px;border-radius:20px;padding:0;background:#ffb000;box-shadow:0 6px 0 rgba(0,0,0,0.06)}
+    .device{background:var(--bg);border-radius:14px;padding:0 0 22px;overflow:hidden}
+    header{height:86px;padding:18px 18px 12px;color:var(--white);display:flex;flex-direction:column}
+    header .top{display:flex;align-items:center;justify-content:space-between}
+    header h1{margin:0;font-size:20px;font-weight:600}
+    .subtitle{opacity:0.6;font-size:13px}
+    main{padding:18px}
+    .section-title{color:var(--white);font-size:34px;margin:6px 0 8px}
+    .section-sub{color:var(--muted);font-size:14px;margin-bottom:12px}
+    .card{background:linear-gradient(0deg,#ffb000 0%, #ffb000 0%);display:flex;align-items:center;justify-content:space-between;padding:16px;border-radius:8px;margin-bottom:14px}
+    .card.dark{background:var(--card)}
+    .left{display:flex;align-items:center;gap:14px}
+    .emoji{font-size:42px}
+    .text{color:var(--white)}
+    .title{font-size:18px;margin:0}
+    .meta{font-size:12px;color:rgba(255,255,255,0.85);opacity:0.9}
+    .btn{background:var(--white);color:var(--bg);padding:8px 14px;border-radius:22px;font-weight:600;border:none;cursor:pointer}
+    .muted-card{background:var(--card);padding:18px;border-radius:8px;color:var(--white)}
+    .small-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+    .clock-badge{width:40px;height:40px;border-radius:50%;background:linear-gradient(180deg,#2b2b2b,#181818);display:flex;align-items:center;justify-content:center;color:#fff}
+    footer{height:8px}
+    @media(max-width:420px){.frame{width:360px}}
+
+    /* Debug overlay */
+    #ad-debug{
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      font-size: 12px;
+      max-height: 120px;
+      overflow-y: auto;
+      padding: 6px 10px;
+      font-family: monospace;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame" role="application">
+    <div class="device">
+      <header>
+        <div class="top">
+          <div style="opacity:0.95">Close</div>
+          <h1>Your app</h1>
+          <div style="opacity:0.6">⋯</div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="section-title">Tasks</div>
+          <div class="subtitle">Get rewards for actions</div>
+        </div>
+      </header>
+
+      <main>
+        <!-- Rewarded Interstitial -->
+        <div class="card" id="rewarded-interstitial">
+          <div class="left">
+            <div class="emoji">🤩</div>
+            <div>
+              <p class="title">Watch short ads</p>
+              <div class="meta">Rewarded Interstitial</div>
+            </div>
+          </div>
+          <div>
+            <button class="btn" id="btn-rewarded-interstitial">Claim</button>
+          </div>
+        </div>
+
+        <!-- Rewarded Popup -->
+        <div class="card dark" id="rewarded-popup" style="margin-bottom:18px">
+          <div class="left">
+            <div class="emoji">😎</div>
+            <div>
+              <p class="title">Click to get reward</p>
+              <div class="meta">Rewarded Popup</div>
+            </div>
+          </div>
+          <div>
+            <button class="btn" id="btn-rewarded-popup">Claim</button>
+          </div>
+        </div>
+
+        <!-- In-App -->
+        <div class="muted-card">
+          <div style="font-size:22px;margin-bottom:6px">Daily</div>
+          <div style="color:var(--muted);font-size:13px;margin-bottom:14px">After time actions</div>
+
+          <div class="small-row">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="emoji" style="font-size:36px">👀</div>
+              <div>
+                <div class="title">Watch video</div>
+                <div class="meta">In-App Interstitial</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="clock-badge">⏱</div>
+              <button class="btn" id="btn-inapp">Watch</button>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer></footer>
+    </div>
+  </div>
+
+  <!-- Debug overlay -->
+  <div id="ad-debug"></div>
+
+  <script>
+    const tg = window.Telegram?.WebApp || null;
+    if (tg) tg.expand();
+
+    function logDebug(msg){
+      const div = document.getElementById('ad-debug');
+      const time = new Date().toLocaleTimeString();
+      div.innerHTML += `[${time}] ${msg}<br>`;
+      div.scrollTop = div.scrollHeight;
+      console.log(msg);
+    }
+
+    function rewardUser(source){
+      logDebug('Rewarding user for ' + source);
+      if (tg?.MainButton){
+        tg.MainButton.setText(`Reward from ${source} 🎉`);
+        tg.MainButton.show();
+        setTimeout(()=>tg.MainButton.hide(), 1800);
+      } else {
+        alert(`You earned a reward from ${source}!`);
+      }
+    }
+
+    // --- Ad Handlers ---
+
+    // In-App with inAppSettings
+    async function showInApp(){
+      if (typeof show_9873868 !== 'function'){
+        logDebug('In-App SDK not loaded.');
+        alert('Ad SDK not loaded');
+        return;
+      }
+      try {
+        logDebug('Attempting to show In-App ad...');
+        await show_9873868({
+          type: 'inApp',
+          inAppSettings: {
+            frequency: 0,   // 0 = manual only, no automatic frequency
+            capping: 0,
+            interval: 0,
+            timeout: 0,
+            everyPage: false
+          }
+        });
+        logDebug('In-App ad shown successfully.');
+        rewardUser('inApp');
+      } catch(e){
+        logDebug('In-App ad failed: ' + e);
+        alert('In-App ad not available.');
+      }
+    }
+
+    // Popup
+    async function showRewardedPopup(){
+      if (typeof show_9873868 !== 'function'){
+        logDebug('Popup SDK not loaded.');
+        alert('Ad SDK not loaded');
+        return;
+      }
+      try {
+        logDebug('Attempting to show Popup ad...');
+        await show_9873868('pop');
+        logDebug('Popup ad shown successfully.');
+        rewardUser('popup');
+      } catch(e){ logDebug('Popup failed: ' + e); }
+    }
+
+    // Interstitial
+    async function showRewardedInterstitial(){
+      if (typeof show_9873868 !== 'function'){
+        logDebug('Interstitial SDK not loaded.');
+        alert('Ad SDK not loaded');
+        return;
+      }
+      try {
+        logDebug('Attempting to show Interstitial ad...');
+        await show_9873868();
+        logDebug('Interstitial ad shown successfully.');
+        rewardUser('interstitial');
+      } catch(e){ logDebug('Interstitial failed: ' + e); }
+    }
+
+    // Wire Buttons
+    document.getElementById('btn-inapp').addEventListener('click', showInApp);
+    document.getElementById('btn-rewarded-popup').addEventListener('click', showRewardedPopup);
+    document.getElementById('btn-rewarded-interstitial').addEventListener('click', showRewardedInterstitial);
+  </script>
+</body>
+</html>

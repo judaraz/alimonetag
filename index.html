@@ -7,70 +7,6 @@
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-/* Firebase config */
-const firebaseConfig = {
-    apiKey: "AIzaSyA3palpYZDFdNpBDIF564YsiOAN2dtbxzA",
-    authDomain: "tic-tac-toe-87d49.firebaseapp.com",
-    projectId: "tic-tac-toe-87d49",
-    storageBucket: "tic-tac-toe-87d49.firebasestorage.app",
-    messagingSenderId: "1051665363188",
-    appId: "1:1051665363188:web:c6389dddb74491a14ceea1"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const tg = window.Telegram.WebApp;
-tg.ready();
-
-const user = tg.initDataUnsafe?.user;
-
-if (!user) {
-    document.body.innerHTML = "<h3>Open inside Telegram</h3>";
-    throw new Error("No Telegram user");
-}
-
-const userRef = doc(db, "users", String(user.id));
-
-/* Save basic user data */
-await setDoc(userRef, {
-    telegram_id: user.id,
-    chat_id: user.id,
-    username: user.username || null,
-    first_name: user.first_name || null,
-    last_name: user.last_name || null,
-    consent_phone: false,
-    reward_unlocked: false,
-    created_at: serverTimestamp()
-}, { merge: true });
-
-/* Load user state */
-const snap = await getDoc(userRef);
-const data = snap.data();
-
-/* UI logic */
-if (data.reward_unlocked === true) {
-    document.getElementById("reward").style.display = "block";
-} else {
-    document.getElementById("consent").style.display = "block";
-}
-
-window.sharePhone = async () => {
-    await setDoc(userRef, { consent_phone: true }, { merge: true });
-
-    tg.sendData(JSON.stringify({
-        action: "REQUEST_PHONE",
-        telegram_id: user.id
-    }));
-
-    tg.showAlert("Now tap YES in the bot to share your mobile number.");
-};
-</script>
-
 <style>
 body {
     margin: 0;
@@ -88,6 +24,7 @@ body {
     border-radius: 14px;
     max-width: 360px;
     text-align: center;
+    display: none;
 }
 button {
     background: #22c55e;
@@ -99,29 +36,101 @@ button {
     font-size: 16px;
     margin-top: 16px;
 }
-.reward {
-    display: none;
-}
-.consent {
-    display: none;
+#error {
+    color: #f87171;
 }
 </style>
 </head>
 
 <body>
-<div class="card">
 
-    <div id="consent" class="consent">
+<div id="app" class="card">
+    <div id="consent">
         <h3>Mobile Number Consent</h3>
         <p>Tap YES to share your phone number and unlock your reward.</p>
-        <button onclick="sharePhone()">✅ YES, Share Mobile Number</button>
+        <button id="shareBtn">✅ YES, Share Mobile Number</button>
     </div>
 
-    <div id="reward" class="reward">
+    <div id="reward" style="display:none;">
         <h3>🎉 Reward Unlocked</h3>
-        <p>Thank you. Your premium feature is now active.</p>
+        <p>Your premium feature is active.</p>
     </div>
 
+    <div id="error"></div>
 </div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+
+        const user = tg.initDataUnsafe?.user;
+        if (!user) throw new Error("Open this inside Telegram");
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3palpYZDFdNpBDIF564YsiOAN2dtbxzA",
+            authDomain: "tic-tac-toe-87d49.firebaseapp.com",
+            projectId: "tic-tac-toe-87d49",
+            storageBucket: "tic-tac-toe-87d49.firebasestorage.app",
+            messagingSenderId: "1051665363188",
+            appId: "1:1051665363188:web:c6389dddb74491a14ceea1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const appBox = document.getElementById("app");
+        const consentBox = document.getElementById("consent");
+        const rewardBox = document.getElementById("reward");
+        const shareBtn = document.getElementById("shareBtn");
+
+        const userRef = doc(db, "users", String(user.id));
+
+        await setDoc(userRef, {
+            telegram_id: user.id,
+            chat_id: user.id,
+            username: user.username || null,
+            first_name: user.first_name || null,
+            last_name: user.last_name || null,
+            consent_phone: false,
+            reward_unlocked: false,
+            created_at: serverTimestamp()
+        }, { merge: true });
+
+        const snap = await getDoc(userRef);
+        const data = snap.data() || {};
+
+        if (data.reward_unlocked === true) {
+            consentBox.style.display = "none";
+            rewardBox.style.display = "block";
+        } else {
+            consentBox.style.display = "block";
+            rewardBox.style.display = "none";
+        }
+
+        shareBtn.onclick = async () => {
+            await setDoc(userRef, { consent_phone: true }, { merge: true });
+
+            tg.sendData(JSON.stringify({
+                action: "REQUEST_PHONE",
+                telegram_id: user.id
+            }));
+
+            tg.showAlert("Tap YES in the bot to share your phone number.");
+        };
+
+        appBox.style.display = "block";
+
+    } catch (err) {
+        document.getElementById("error").innerText = err.message;
+        document.getElementById("app").style.display = "block";
+    }
+});
+</script>
+
 </body>
 </html>

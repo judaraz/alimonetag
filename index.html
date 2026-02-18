@@ -38,6 +38,7 @@ button {
 }
 #error {
     color: #f87171;
+    margin-top: 10px;
 }
 </style>
 </head>
@@ -45,23 +46,15 @@ button {
 <body>
 
 <div id="app" class="card">
-    <div id="consent">
-        <h3>Mobile Number Consent</h3>
-        <p>Tap YES to share your phone number and unlock your reward.</p>
-        <button id="shareBtn">✅ YES, Share Mobile Number</button>
-    </div>
-
-    <div id="reward" style="display:none;">
-        <h3>🎉 Reward Unlocked</h3>
-        <p>Your premium feature is active.</p>
-    </div>
-
+    <h3>Mobile Number Consent</h3>
+    <p>Tap YES to share your phone number and unlock your reward.</p>
+    <button id="shareBtn">✅ YES, Share Mobile Number</button>
     <div id="error"></div>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
@@ -69,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         tg.ready();
 
         const user = tg.initDataUnsafe?.user;
-        if (!user) throw new Error("Open this inside Telegram");
+        if (!user) throw new Error("Open this Mini App inside Telegram");
 
         const firebaseConfig = {
             apiKey: "AIzaSyA3palpYZDFdNpBDIF564YsiOAN2dtbxzA",
@@ -83,13 +76,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        const appBox = document.getElementById("app");
-        const consentBox = document.getElementById("consent");
-        const rewardBox = document.getElementById("reward");
-        const shareBtn = document.getElementById("shareBtn");
-
         const userRef = doc(db, "users", String(user.id));
 
+        // WRITE ONLY (no reads)
         await setDoc(userRef, {
             telegram_id: user.id,
             chat_id: user.id,
@@ -97,22 +86,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             first_name: user.first_name || null,
             last_name: user.last_name || null,
             consent_phone: false,
-            reward_unlocked: false,
             created_at: serverTimestamp()
         }, { merge: true });
 
-        const snap = await getDoc(userRef);
-        const data = snap.data() || {};
+        document.getElementById("app").style.display = "block";
 
-        if (data.reward_unlocked === true) {
-            consentBox.style.display = "none";
-            rewardBox.style.display = "block";
-        } else {
-            consentBox.style.display = "block";
-            rewardBox.style.display = "none";
-        }
-
-        shareBtn.onclick = async () => {
+        document.getElementById("shareBtn").onclick = async () => {
             await setDoc(userRef, { consent_phone: true }, { merge: true });
 
             tg.sendData(JSON.stringify({
@@ -120,14 +99,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 telegram_id: user.id
             }));
 
-            tg.showAlert("Tap YES in the bot to share your phone number.");
+            tg.showAlert("Now tap YES in the bot to share your phone number.");
         };
 
-        appBox.style.display = "block";
-
-    } catch (err) {
-        document.getElementById("error").innerText = err.message;
+    } catch (e) {
         document.getElementById("app").style.display = "block";
+        document.getElementById("error").innerText = e.message;
     }
 });
 </script>
